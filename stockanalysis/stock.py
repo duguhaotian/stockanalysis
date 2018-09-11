@@ -23,7 +23,9 @@ class GridStock(object):
         self.minPrices = minPrices
         self.closePrices = closePrices
         self.allMoney = allMoney
+        self.baseMoney = allMoney
         self.currMoney = allMoney
+        self.periodBaseMoney = allMoney
         self.currTime = ""
         self.records = []
         self.jetton = []
@@ -55,24 +57,33 @@ class GridStock(object):
         self.recordsfd.write(self.currRecordRow, 1, item.price)
         self.recordsfd.write(self.currRecordRow, 2, item.count)
         self.recordsfd.write(self.currRecordRow, 3, item.earning)
-        self.recordsfd.write(self.currRecordRow, 4, (item.earning / self.allMoney))
+        self.recordsfd.write(self.currRecordRow, 4, (item.earning / self.baseMoney))
         self.currRecordRow += 1
     
     def save_sellout_record(self):
         self.selloutfd.write(self.currSelloutRow, 0, self.currTime)
         self.selloutfd.write(self.currSelloutRow, 1, self.currMoney)
         self.selloutfd.write(self.currSelloutRow, 2, self.earnings)
-        self.selloutfd.write(self.currSelloutRow, 3, (self.earnings / self.allMoney))
+        self.selloutfd.write(self.currSelloutRow, 3, (self.earnings / self.baseMoney))
         self.currSelloutRow += 1
 
-    def show(self):
+    def showRecords(self):
         for rec in self.records:
             self.save_record(rec)
+    
+    def calAllMoney(self, price):
+        self.allMoney = self.currMoney
+        for rec in self.jetton:
+            self.allMoney += (price * rec.count)
+
+    def showJetton(self):
+        for rec in self.jetton:
+            print(rec)
 
     def buy(self, price):
         if price == 0:
             return
-        lowmoney = GridStock.tradingunit * self.allMoney
+        lowmoney = GridStock.tradingunit * self.periodBaseMoney
         workmoney = lowmoney
         if self.currMoney < lowmoney:
             return
@@ -107,6 +118,7 @@ class GridStock(object):
         price = self.openPrice
         while i < len(self.closePrices):
             if len(self.jetton) == 0 and fsellout is False:
+                self.periodBaseMoney = self.currMoney
                 self.save_sellout_record()
                 fsellout = True
             self.currTime = self.dealtimes[i]
@@ -131,12 +143,13 @@ class GridStock(object):
                 price = work2
                 continue
         
-        self.show()
+        self.calAllMoney(self.closePrices[i-1])
+        self.showRecords()
         # save into excel
         nowTime=datetime.now().strftime('%H%M%S')
-        fname = r"E:\stockdatas\result_%s.xls" % nowTime
+        fname = r"E:\stockdatas\result\%s.xls" % nowTime
         self.savefd.save(fname)
-
+        self.showJetton()
 
 def read_excel(fname):
     workbook = xlrd.open_workbook(fname)
@@ -159,6 +172,8 @@ def read_excel(fname):
     while i < len(strclosePrices):
         date = datetime(*xldate_as_tuple(fdealTimes[i], 0))
         cell = date.strftime('%Y/%m/%d')
+        #start = datetime.strptime("2017/10/11", "%Y/%m/%d")
+        #diff = (date - start).total_seconds()
         dealTimes.append(cell)
         highestPrices.append(float(strhighestPrices[i]))
         lowestPrices.append(float(strlowestPrices[i]))
@@ -172,4 +187,4 @@ def read_excel(fname):
 
   
 if __name__ == '__main__':
-  read_excel(r"E:\stockdatas\jiansheprice.xlsx")
+    read_excel(r"E:\stockdatas\gongshangprice.xlsx")
